@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+contract RestakingApp {
+    address public owner;
+    IERC20 public stakedToken; // The token being staked
+    IERC20 public rewardToken; // The token received as rewards
+
+    mapping(address => uint256) public stakedAmounts;
+    mapping(address => uint256) public lastStakeTimestamp;
+
+    event Staked(address indexed user, uint256 amount);
+    event Unstaked(address indexed user, uint256 amount);
+    event RewardsClaimed(address indexed user, uint256 rewards);
+
+    constructor(address _stakedToken, address _rewardToken) {
+        owner = msg.sender;
+        stakedToken = IERC20(_stakedToken);
+        rewardToken = IERC20(_rewardToken);
+    }
+
+    // Stake tokens
+    function stake(uint256 amount) external {
+        require(amount > 0, "Amount must be greater than 0");
+        stakedToken.transferFrom(msg.sender, address(this), amount);
+        stakedAmounts[msg.sender] += amount;
+        lastStakeTimestamp[msg.sender] = block.timestamp;
+        emit Staked(msg.sender, amount);
+    }
+
+    // Unstake tokens
+    function unstake(uint256 amount) external {
+        require(amount > 0, "Amount must be greater than 0");
+        require(stakedAmounts[msg.sender] >= amount, "Insufficient staked balance");
+        stakedAmounts[msg.sender] -= amount;
+        stakedToken.transfer(msg.sender, amount);
+        emit Unstaked(msg.sender, amount);
+    }
+
+    // Claim rewards
+    function claimRewards() external {
+        uint256 rewards = calculateRewards(msg.sender);
+        require(rewards > 0, "No rewards to claim");
+        rewardToken.transfer(msg.sender, rewards);
+        emit RewardsClaimed(msg.sender, rewards);
+    }
+
+    // Calculate rewards
+    function calculateRewards(address account) internal view returns (uint256) {
+        // In a real app, this logic would be more complex
+        // For now, let's assume a fixed reward rate
+        uint256 stakedAmount = stakedAmounts[account];
+        uint256 timeSinceLastStake = block.timestamp - lastStakeTimestamp[account];
+        uint256 rewardRatePerSecond = 1; // Arbitrary reward rate per second
+        return stakedAmount * rewardRatePerSecond * timeSinceLastStake;
+    }
+}

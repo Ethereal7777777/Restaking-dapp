@@ -1,0 +1,58 @@
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract StakingContract is ERC20 {
+    address public owner;
+    uint256 public totalRewards = 0;
+
+    mapping(address => uint256) public lastUpdateTime;
+    mapping(address => uint256) public rewards;
+
+    event Staked(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 amount);
+    event RewardPaid(address indexed user, uint256 reward);
+
+    constructor() ERC20("StakingToken", "STK") {
+        owner = msg.sender;
+    }
+
+    function deposit(uint256 amount) public {
+        updateReward(msg.sender);
+        _mint(msg.sender, amount);
+        emit Staked(msg.sender, amount);
+    }
+
+    function withdraw(uint256 amount) public {
+        updateReward(msg.sender);
+        _burn(msg.sender, amount);
+        emit Withdrawn(msg.sender, amount);
+    }
+
+    function distributeRewards(uint256 amount) public {
+        totalRewards += amount;
+    }
+
+    function updateReward(address account) public {
+        rewards[account] = earned(account);
+        lastUpdateTime[account] = block.timestamp;
+    }
+
+    function earned(address account) public view returns (uint256) {
+        uint256 blockTime = block.timestamp;
+        return
+            balanceOf(account) *
+            (blockTime - lastUpdateTime[account]) *
+            totalRewards;
+    }
+
+    function getReward() public {
+        updateReward(msg.sender);
+        uint256 reward = rewards[msg.sender];
+        if (reward > 0) {
+            rewards[msg.sender] = 0;
+            _mint(msg.sender, reward);
+            emit RewardPaid(msg.sender, reward);
+        }
+    }
+}

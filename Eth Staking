@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract StakingPlatform {
+    struct Stake {
+        uint256 amount;
+        uint256 timestamp;
+    }
+
+    mapping(address => Stake) public stakes;
+    uint256 public rewardRate; // Annual reward rate in percentage
+    uint256 public constant MINIMUM_STAKE = 0.1 ether; // Minimum amount to stake
+
+    event Staked(address indexed user, uint256 amount);
+    event Unstaked(address indexed user, uint256 amount, uint256 reward);
+
+    constructor(uint256 _rewardRate) {
+        rewardRate = _rewardRate;
+    }
+
+    function stake() external payable {
+        require(msg.value >= MINIMUM_STAKE, "Minimum stake amount is 0.1 ETH");
+        require(stakes[msg.sender].amount == 0, "Already staked");
+
+        stakes[msg.sender] = Stake(msg.value, block.timestamp);
+        emit Staked(msg.sender, msg.value);
+    }
+
+    function unstake() external {
+        Stake memory userStake = stakes[msg.sender];
+        require(userStake.amount > 0, "No stake found");
+
+        uint256 stakingDuration = block.timestamp - userStake.timestamp;
+        uint256 reward = calculateReward(userStake.amount, stakingDuration);
+
+        uint256 totalAmount = userStake.amount + reward;
+        delete stakes[msg.sender];
+
+        payable(msg.sender).transfer(totalAmount);
+        emit Unstaked(msg.sender, userStake.amount, reward);
+    }
+
+    function calculateReward(uint256 amount, uint256 duration) internal view returns (uint256) {
+        uint256 reward = amount * rewardRate * duration / (365 days * 100);
+        return reward;
+    }
+
+    function getStake(address user) external view returns (uint256 amount, uint256 timestamp) {
+        Stake memory userStake = stakes[user];
+        return (userStake.amount, userStake.timestamp);
+    }
+}

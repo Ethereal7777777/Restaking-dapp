@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DEX {
+    struct Order {
+        uint id;
+        address trader;
+        bool isBuy;
+        uint amount;
+        uint price;
+    }
+
+    mapping(address => uint) public balances;
+    mapping(uint => Order) public orders;
+    uint public nextOrderId;
+
+    function deposit() external payable {
+        balances[msg.sender] += msg.value;
+    }
+
+    function createOrder(bool isBuy, uint amount, uint price) external {
+        orders[nextOrderId] = Order(nextOrderId, msg.sender, isBuy, amount, price);
+        nextOrderId++;
+    }
+
+    function executeOrder(uint orderId) external payable {
+        Order storage order = orders[orderId];
+        require(order.trader != address(0), "Order does not exist");
+        
+        if (order.isBuy) {
+            require(msg.value == order.amount * order.price, "Incorrect ETH amount");
+            balances[order.trader] += msg.value;
+        } else {
+            require(balances[order.trader] >= order.amount, "Insufficient balance");
+            balances[order.trader] -= order.amount;
+            payable(msg.sender).transfer(order.amount * order.price);
+        }
+
+        delete orders[orderId];
+    }
+
+    function withdraw(uint amount) external {
+        require(balances[msg.sender] >= amount, "Insufficient balance");
+        balances[msg.sender] -= amount;
+        payable(msg.sender).transfer(amount);
+    }
+}

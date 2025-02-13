@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Restaking {
+    mapping(address => uint256) public balances;
+    uint256 public totalStaked;
+
+    function stake() external payable {
+        require(msg.value > 0, "Cannot stake 0 Ether");
+        balances[msg.sender] += msg.value;
+        totalStaked += msg.value;
+    }
+
+    function restake() external {
+        uint256 amount = balances[msg.sender];
+        require(amount > 0, "No balance to restake");
+        balances[msg.sender] += amount;
+        totalStaked += amount;
+    }
+
+    function withdraw(uint256 amount) external {
+        require(amount <= balances[msg.sender], "Insufficient balance");
+        balances[msg.sender] -= amount;
+        totalStaked -= amount;
+        payable(msg.sender).transfer(amount);
+    }
+
+    function getBalance() external view returns (uint256) {
+        return balances[msg.sender];
+    }
+}
